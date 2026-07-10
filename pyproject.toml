@@ -4,18 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rochedb"
-version = "0.1.0"
+version = "0.1.1"
 description = "Pure Python TCP driver for RocheDB"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
 authors = [
   { name = "RocheDB contributors" }
 ]
 keywords = ["rochedb", "database", "nosql", "rag", "retrieval"]
 classifiers = [
   "Development Status :: 3 - Alpha",
-  "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
