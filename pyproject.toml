@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rochedb"
+version = "0.1.0"
+description = "Pure Python TCP driver for RocheDB"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [
+  { name = "RocheDB contributors" }
+]
+keywords = ["rochedb", "database", "nosql", "rag", "retrieval"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+
+[project.urls]
+Homepage = "https://github.com/puffball1567/rochedb"
+Repository = "https://github.com/puffball1567/rochedb-python"
+Issues = "https://github.com/puffball1567/rochedb-python/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["rochedb*"]
