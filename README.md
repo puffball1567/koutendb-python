@@ -8,7 +8,7 @@ Applications pass a human-readable ring name, and RocheDB returns a typed ID.
 
 ## Status
 
-- package target: PyPI `rochedb` after validation
+- package: PyPI [`rochedb`](https://pypi.org/project/rochedb/) v0.1.2
 - current mode: native TCP wire driver
 - Python: 3.10+
 - runtime dependencies: none
@@ -28,14 +28,19 @@ Implemented:
 
 Planned:
 
-- PyPI publication
 - authentication / secret-key handshake support
 - retrieve / atlas wire APIs once the public wire contract is finalized for drivers
 - connection pooling
 
-## Install For Local Development
+## Install
 
-Until PyPI publication, install from a checkout:
+Install the published package from PyPI:
+
+```sh
+python3 -m pip install rochedb
+```
+
+For local driver development, install from a checkout:
 
 ```sh
 python3 -m pip install -e .
