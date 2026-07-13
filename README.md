@@ -8,7 +8,7 @@ Applications pass a human-readable ring name, and RocheDB returns a typed ID.
 
 ## Status
 
-- package: PyPI [`rochedb`](https://pypi.org/project/rochedb/) v0.1.2
+- package: PyPI [`rochedb`](https://pypi.org/project/rochedb/) v0.1.3
 - current mode: native TCP wire driver
 - Python: 3.10+
 - runtime dependencies: none
@@ -18,9 +18,10 @@ Implemented:
 
 - persistent TCP connections
 - `wire_version` / `health`
-- `put` / `put_json`
-- `get` / `get_text` / `get_json`
-- `query` / `query_text` / `query_json`
+- `put` / `put_codec` / `put_json` / `put_nif` / `put_bif`
+- `get` / `get_encoded` / `get_text` / `get_json`
+- `query` / `query_encoded` / `query_text` / `query_json`
+- codec metadata negotiation with `CODECMETA ON`
 - `batch_get`
 - typed `RocheId`
 - one reconnect retry
@@ -30,6 +31,7 @@ Planned:
 
 - authentication / secret-key handshake support
 - retrieve / atlas wire APIs once the public wire contract is finalized for drivers
+- ring-read filters/projection once the public wire contract is finalized for drivers
 - connection pooling
 
 ## Install
@@ -68,6 +70,7 @@ with RocheClient.connect("127.0.0.1:17301") as db:
     )
 
     print(db.get_json(doc_id))
+    print(db.get_encoded(doc_id).codec)
     print(db.query_json(doc_id, "{ title }"))
 ```
 
@@ -80,7 +83,8 @@ ROCHEDB_CORE_DIR=/path/to/rochedb python3 -m unittest discover -s tests
 ```
 
 The test starts a two-node local `roched` cluster and verifies put/get/query,
-JSON helpers, `wire_version`, and `batch_get`.
+JSON helpers, codec metadata, BIF opaque payloads, `wire_version`, and
+`batch_get`.
 
 ## Why A Native Wire Driver?
 
