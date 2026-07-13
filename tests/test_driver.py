@@ -1,4 +1,5 @@
 import os
+import json
 import subprocess
 import sys
 import time
@@ -79,6 +80,25 @@ class RochePythonDriverTest(unittest.TestCase):
         )
         self.assertEqual(self.client.get_json(doc_id)["title"], "Python driver")
         self.assertEqual(self.client.query_json(doc_id, "{ kind }"), {"kind": "example"})
+        encoded = self.client.get_encoded(doc_id)
+        self.assertIsNotNone(encoded)
+        assert encoded is not None
+        self.assertEqual(encoded.codec, "json")
+        self.assertEqual(json.loads(encoded.payload.decode("utf-8"))["title"], "Python driver")
+
+        projected = self.client.query_encoded(doc_id, "{ title }")
+        self.assertIsNotNone(projected)
+        assert projected is not None
+        self.assertEqual(projected.codec, "json")
+        self.assertEqual(json.loads(projected.payload.decode("utf-8")), {"title": "Python driver"})
+
+    def test_bif_codec_roundtrip(self):
+        doc_id = self.client.put_bif("artifacts/bif", b"\x01\x02\x03\x04")
+        encoded = self.client.get_encoded(doc_id)
+        self.assertIsNotNone(encoded)
+        assert encoded is not None
+        self.assertEqual(encoded.codec, "bif")
+        self.assertEqual(encoded.payload, b"\x01\x02\x03\x04")
 
     def test_batch_get_and_id_string_roundtrip(self):
         first = self.client.put("tenant/acme/orders", "order-1")

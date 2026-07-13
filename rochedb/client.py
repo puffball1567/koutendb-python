@@ -4,11 +4,15 @@ from dataclasses import dataclass
 import json
 import socket
 import struct
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, Literal, Optional
 
 
 class RocheError(Exception):
     """Raised when RocheDB returns an error frame or the TCP connection fails."""
+
+
+PayloadCodec = Literal["raw", "json", "nif", "bif"]
+_PAYLOAD_CODECS = {"raw", "json", "nif", "bif"}
 
 
 @dataclass(frozen=True)
@@ -41,6 +45,12 @@ class RocheId:
         )
 
 
+@dataclass(frozen=True)
+class EncodedPayload:
+    payload: bytes
+    codec: PayloadCodec
+
+
 def _parse_peers(peers: str | Iterable[str]) -> list[tuple[str, int]]:
     values = peers.split(",") if isinstance(peers, str) else list(peers)
     parsed: list[tuple[str, int]] = []
@@ -67,6 +77,12 @@ def _as_bytes(payload: bytes | bytearray | memoryview | str) -> bytes:
     if isinstance(payload, str):
         return payload.encode("utf-8")
     return bytes(payload)
+
+
+def _codec(codec: str) -> PayloadCodec:
+    if codec not in _PAYLOAD_CODECS:
+        raise ValueError(f"unsupported payload codec: {codec}")
+    return codec  # type: ignore[return-value]
 
 
 class RocheClient:
@@ -110,13 +126,14 @@ class RocheClient:
         ring: str,
         payload: bytes | bytearray | memoryview | str,
         vector: Optional[Iterable[float]] = None,
+        codec: PayloadCodec = "raw",
         node: int = 0,
     ) -> RocheId:
         ring_b = ring.encode("utf-8")
         payload_b = _as_bytes(payload)
         vec_b = _vec_bytes(vector)
         vec_dim = len(vec_b) // 4
-        header = f"PUTR {len(ring_b)} {len(payload_b)} {vec_dim}"
+        header = f"PUTR {len(ring_b)} {len(payload_b)} {vec_dim} {_codec(codec)}"
         parts = self._rpc(node, header, ring_b + payload_b + vec_b)
         if not parts or parts[0] != "ID" or len(parts) != 7:
             raise RocheError("PUTR failed: " + " ".join(parts))
@@ -129,6 +146,16 @@ class RocheClient:
             head=float(parts[6]),
         )
 
+    def put_codec(
+        self,
+        ring: str,
+        payload: bytes | bytearray | memoryview | str,
+        codec: PayloadCodec,
+        vector: Optional[Iterable[float]] = None,
+        node: int = 0,
+    ) -> RocheId:
+        return self.put(ring, payload, vector=vector, codec=codec, node=node)
+
     def put_json(
         self,
         ring: str,
@@ -137,10 +164,33 @@ class RocheClient:
         node: int = 0,
     ) -> RocheId:
         payload = json.dumps(value, separators=(",", ":"), ensure_ascii=False)
-        return self.put(ring, payload, vector=vector, node=node)
+        return self.put(ring, payload, vector=vector, codec="json", node=node)
+
+    def put_nif(
+        self,
+        ring: str,
+        payload: bytes | bytearray | memoryview | str,
+        vector: Optional[Iterable[float]] = None,
+        node: int = 0,
+    ) -> RocheId:
+        return self.put(ring, payload, vector=vector, codec="nif", node=node)
+
+    def put_bif(
+        self,
+        ring: str,
+        payload: bytes | bytearray | memoryview,
+        vector: Optional[Iterable[float]] = None,
+        node: int = 0,
+    ) -> RocheId:
+        return self.put(ring, payload, vector=vector, codec="bif", node=node)
 
     def get(self, doc_id: RocheId, node: Optional[int] = None) -> Optional[bytes]:
         return self._read_with_fallback("GETID", doc_id, b"", node=node)
+
+    def get_encoded(
+        self, doc_id: RocheId, node: Optional[int] = None
+    ) -> Optional[EncodedPayload]:
+        return self._read_encoded_with_fallback("GETID", doc_id, b"", node=node)
 
     def get_text(self, doc_id: RocheId, node: Optional[int] = None) -> Optional[str]:
         value = self.get(doc_id, node=node)
@@ -155,6 +205,12 @@ class RocheClient:
     ) -> Optional[bytes]:
         selection_b = selection.encode("utf-8")
         return self._read_with_fallback("QRYID", doc_id, selection_b, node=node)
+
+    def query_encoded(
+        self, doc_id: RocheId, selection: str, node: Optional[int] = None
+    ) -> Optional[EncodedPayload]:
+        selection_b = selection.encode("utf-8")
+        return self._read_encoded_with_fallback("QRYID", doc_id, selection_b, node=node)
 
     def query_text(
         self, doc_id: RocheId, selection: str, node: Optional[int] = None
@@ -192,7 +248,9 @@ class RocheClient:
             pos += length
         return out
 
-    def _read_id(self, op: str, doc_id: RocheId, selection: bytes, node: int) -> Optional[bytes]:
+    def _read_id_encoded(
+        self, op: str, doc_id: RocheId, selection: bytes, node: int
+    ) -> Optional[EncodedPayload]:
         header = (
             f"{op} {doc_id.parent} {doc_id.epoch} {doc_id.seq} "
             f"{doc_id.t_write} {doc_id.period} {doc_id.head}"
@@ -217,10 +275,15 @@ class RocheClient:
                 period=float(parts[5]),
                 head=float(parts[6]),
             )
-            return self._read_id(op, fwd, selection, node=node)
-        if parts[0] != "VAL" or len(parts) != 3:
+            return self._read_id_encoded(op, fwd, selection, node=node)
+        if parts[0] != "VAL" or len(parts) not in (3, 4):
             raise RocheError(f"{op} failed: " + " ".join(parts))
-        return self._read_exact(self._socket_for(node), int(parts[2]))
+        codec = _codec(parts[3]) if len(parts) == 4 else ("json" if op == "QRYID" else "raw")
+        return EncodedPayload(self._read_exact(self._socket_for(node), int(parts[2])), codec)
+
+    def _read_id(self, op: str, doc_id: RocheId, selection: bytes, node: int) -> Optional[bytes]:
+        value = self._read_id_encoded(op, doc_id, selection, node=node)
+        return None if value is None else value.payload
 
     def _read_with_fallback(
         self, op: str, doc_id: RocheId, selection: bytes, node: Optional[int]
@@ -232,6 +295,20 @@ class RocheClient:
             return first
         for peer_node in range(1, len(self.peers)):
             value = self._read_id(op, doc_id, selection, node=peer_node)
+            if value is not None:
+                return value
+        return None
+
+    def _read_encoded_with_fallback(
+        self, op: str, doc_id: RocheId, selection: bytes, node: Optional[int]
+    ) -> Optional[EncodedPayload]:
+        if node is not None:
+            return self._read_id_encoded(op, doc_id, selection, node=node)
+        first = self._read_id_encoded(op, doc_id, selection, node=0)
+        if first is not None or len(self.peers) == 1:
+            return first
+        for peer_node in range(1, len(self.peers)):
+            value = self._read_id_encoded(op, doc_id, selection, node=peer_node)
             if value is not None:
                 return value
         return None
@@ -263,6 +340,14 @@ class RocheClient:
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         except OSError:
             pass
+        try:
+            sock.sendall(b"CODECMETA ON\n")
+            reply = self._read_header(sock)
+            if not reply or reply[0] != "OK":
+                raise RocheError("CODECMETA failed: " + " ".join(reply))
+        except BaseException:
+            sock.close()
+            raise
         self._socks[node] = sock
         return sock
 
