@@ -6,28 +6,28 @@ import time
 import unittest
 from pathlib import Path
 
-from rochedb import RocheClient, RocheId
+from koutendb import KoutenClient, KoutenId
 
 
 DRIVER_ROOT = Path(__file__).resolve().parents[1]
-CORE_ROOT = Path(os.environ.get("ROCHEDB_CORE_DIR", DRIVER_ROOT.parent / "rochedb"))
+CORE_ROOT = Path(os.environ.get("KOUTENDB_CORE_DIR", DRIVER_ROOT.parent / "koutendb"))
 
 
-class RochePythonDriverTest(unittest.TestCase):
+class KoutenPythonDriverTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.peers = os.environ.get(
-            "ROCHE_TEST_PEERS", "127.0.0.1:17831,127.0.0.1:17832"
+            "KOUTEN_TEST_PEERS", "127.0.0.1:17831,127.0.0.1:17832"
         )
         cls.processes = []
-        roched = CORE_ROOT / "src" / "roched"
-        if not roched.exists():
-            raise RuntimeError(f"roched not found: {roched}")
+        koutend = CORE_ROOT / "src" / "koutend"
+        if not koutend.exists():
+            raise RuntimeError(f"koutend not found: {koutend}")
         for i in range(2):
             cls.processes.append(
                 subprocess.Popen(
                     [
-                        str(roched),
+                        str(koutend),
                         f"--id={i}",
                         f"--peers={cls.peers}",
                         "--slow-tick=1000",
@@ -36,7 +36,7 @@ class RochePythonDriverTest(unittest.TestCase):
                 )
             )
 
-        cls.client = RocheClient.connect(cls.peers, timeout=1.0)
+        cls.client = KoutenClient.connect(cls.peers, timeout=1.0)
         deadline = time.time() + 5.0
         while time.time() < deadline:
             try:
@@ -45,7 +45,7 @@ class RochePythonDriverTest(unittest.TestCase):
                 return
             except Exception:
                 time.sleep(0.1)
-        raise RuntimeError("roched test cluster did not start")
+        raise RuntimeError("koutend test cluster did not start")
 
     @classmethod
     def tearDownClass(cls):
@@ -68,7 +68,7 @@ class RochePythonDriverTest(unittest.TestCase):
             b'{"title":"Shinjuku","country":"JP"}',
             vector=[1.0, 0.0],
         )
-        self.assertIsInstance(doc_id, RocheId)
+        self.assertIsInstance(doc_id, KoutenId)
         self.assertEqual(
             self.client.get(doc_id), b'{"title":"Shinjuku","country":"JP"}'
         )
@@ -103,7 +103,7 @@ class RochePythonDriverTest(unittest.TestCase):
     def test_batch_get_and_id_string_roundtrip(self):
         first = self.client.put("tenant/acme/orders", "order-1")
         second = self.client.put("tenant/acme/orders", "order-2")
-        self.assertEqual(RocheId.parse(str(first)), first)
+        self.assertEqual(KoutenId.parse(str(first)), first)
         self.assertEqual(self.client.batch_get([first, second]), [b"order-1", b"order-2"])
 
 

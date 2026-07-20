@@ -3,16 +3,21 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "rochedb"
-version = "0.1.3"
-description = "Pure Python TCP driver for RocheDB"
+name = "koutendb"
+version = "0.2.0"
+description = "Pure Python TCP driver for KoutenDB"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 authors = [
-  { name = "RocheDB contributors" }
+  { name = "KoutenDB contributors" }
 ]
-keywords = ["rochedb", "database", "nosql", "rag", "retrieval"]
+keywords = ["koutendb", "database", "nosql", "rag", "retrieval"]
+
+# TLS uses the standard library `ssl` module (no dependency). Shared-secret
+# (secret_key) challenge-response and encrypted transport frames additionally
+# need libsodium via PyNaCl; install with the `secure` extra when using it.
+dependencies = []
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Programming Language :: Python :: 3",
@@ -22,11 +27,14 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 
+[project.optional-dependencies]
+secure = ["pynacl>=1.5"]
+
 [project.urls]
-Homepage = "https://github.com/puffball1567/rochedb"
-Repository = "https://github.com/puffball1567/rochedb-python"
-Issues = "https://github.com/puffball1567/rochedb-python/issues"
+Homepage = "https://github.com/puffball1567/koutendb"
+Repository = "https://github.com/puffball1567/koutendb-python"
+Issues = "https://github.com/puffball1567/koutendb-python/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["rochedb*"]
+include = ["koutendb*"]
