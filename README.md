@@ -8,7 +8,7 @@ Applications pass a human-readable ring name, and KoutenDB returns a typed ID.
 
 ## Status
 
-- package: PyPI [`koutendb`](https://pypi.org/project/koutendb/) v0.1.3
+- package: PyPI [`koutendb`](https://pypi.org/project/koutendb/) v0.2.0
 - current mode: native TCP wire driver
 - Python: 3.10+
 - runtime dependencies: none
