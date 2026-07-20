@@ -23,11 +23,11 @@ jobs:
       - name: Checkout Python driver
         uses: actions/checkout@v4
 
-      - name: Checkout RocheDB core
+      - name: Checkout KoutenDB core
         uses: actions/checkout@v4
         with:
-          repository: puffball1567/rochedb
-          path: rochedb-core
+          repository: puffball1567/koutendb
+          path: koutendb-core
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -42,14 +42,14 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y libsodium-dev
 
-      - name: Build roched
+      - name: Build koutend
         run: |
-          cd rochedb-core
+          cd koutendb-core
           nimble install -y
-          nim c -d:release --nimcache:/tmp/nimcache_roched -o:src/roched src/roched.nim
+          nim c -d:release --nimcache:/tmp/nimcache_koutend -o:src/koutend src/koutend.nim
 
       - name: Install package
         run: python -m pip install -e .
 
       - name: Run tests
-        run: ROCHEDB_CORE_DIR="${{ github.workspace }}/rochedb-core" python -m unittest discover -s tests
+        run: KOUTENDB_CORE_DIR="${{ github.workspace }}/koutendb-core" python -m unittest discover -s tests

@@ -1,18 +1,18 @@
-# RocheDB Python Driver
+# KoutenDB Python Driver
 
-Pure Python TCP driver for [RocheDB](https://github.com/puffball1567/rochedb).
+Pure Python TCP driver for [KoutenDB](https://github.com/puffball1567/koutendb).
 
-This driver talks to `roched` over RocheDB's high-level wire protocol. It does
-not reimplement RocheDB's ring-key, period, head-angle, or placement rules.
-Applications pass a human-readable ring name, and RocheDB returns a typed ID.
+This driver talks to `koutend` over KoutenDB's high-level wire protocol. It does
+not reimplement KoutenDB's ring-key, period, head-angle, or placement rules.
+Applications pass a human-readable ring name, and KoutenDB returns a typed ID.
 
 ## Status
 
-- package: PyPI [`rochedb`](https://pypi.org/project/rochedb/) v0.1.3
+- package: PyPI [`koutendb`](https://pypi.org/project/koutendb/) v0.1.3
 - current mode: native TCP wire driver
 - Python: 3.10+
 - runtime dependencies: none
-- RocheDB core: running `roched` node or cluster
+- KoutenDB core: running `koutend` node or cluster
 
 Implemented:
 
@@ -23,7 +23,7 @@ Implemented:
 - `query` / `query_encoded` / `query_text` / `query_json`
 - codec metadata negotiation with `CODECMETA ON`
 - `batch_get`
-- typed `RocheId`
+- typed `KoutenId`
 - one reconnect retry
 - context manager support
 
@@ -39,7 +39,7 @@ Planned:
 Install the published package from PyPI:
 
 ```sh
-python3 -m pip install rochedb
+python3 -m pip install koutendb
 ```
 
 For local driver development, install from a checkout:
@@ -48,21 +48,21 @@ For local driver development, install from a checkout:
 python3 -m pip install -e .
 ```
 
-Build `roched` from the RocheDB core repository:
+Build `koutend` from the KoutenDB core repository:
 
 ```sh
-git clone https://github.com/puffball1567/rochedb.git
-cd rochedb
+git clone https://github.com/puffball1567/koutendb.git
+cd koutendb
 nimble install -y
-nim c -d:release --nimcache:/tmp/nimcache_roched -o:src/roched src/roched.nim
+nim c -d:release --nimcache:/tmp/nimcache_koutend -o:src/koutend src/koutend.nim
 ```
 
 ## Example
 
 ```python
-from rochedb import RocheClient
+from koutendb import KoutenClient
 
-with RocheClient.connect("127.0.0.1:17301") as db:
+with KoutenClient.connect("127.0.0.1:17301") as db:
     doc_id = db.put_json(
         "docs/japan/support",
         {"title": "Tokyo support note", "country": "JP"},
@@ -74,21 +74,61 @@ with RocheClient.connect("127.0.0.1:17301") as db:
     print(db.query_json(doc_id, "{ title }"))
 ```
 
-## Test
+## Authentication and TLS
 
-From this driver repository, point `ROCHEDB_CORE_DIR` at a RocheDB checkout:
+`connect` accepts credentials and TLS options. Password auth and TLS use only
+the standard library. Shared-secret (`secret_key`) challenge-response and the
+encrypted transport it enables additionally need libsodium via PyNaCl — install
+the `secure` extra:
 
 ```sh
-ROCHEDB_CORE_DIR=/path/to/rochedb python3 -m unittest discover -s tests
+pip install koutendb[secure]
 ```
 
-The test starts a two-node local `roched` cluster and verifies put/get/query,
+Connect over TLS with shared-secret auth, verifying the server against a CA or
+self-signed certificate PEM (certificate verification stays on):
+
+```python
+from koutendb import KoutenClient
+
+db = KoutenClient.connect(
+    "127.0.0.1:17301",
+    username="alice",
+    password="secret",
+    secret_key="shared-secret",
+    tls_ca_file="/path/to/server.crt",
+)
+```
+
+Password-only auth over TLS needs no extra dependency:
+
+```python
+db = KoutenClient.connect(
+    "127.0.0.1:17301", username="alice", password="secret",
+    tls_ca_file="/path/to/server.crt",
+)
+```
+
+`tls_insecure_skip_verify=True` disables certificate verification. The
+connection is then encrypted but unauthenticated and trivially impersonable, so
+it is for local smoke tests only — never a production server. Prefer
+`tls_ca_file` for self-signed certificates.
+
+## Test
+
+From this driver repository, point `KOUTENDB_CORE_DIR` at a KoutenDB checkout:
+
+```sh
+KOUTENDB_CORE_DIR=/path/to/koutendb python3 -m unittest discover -s tests
+```
+
+The test starts a two-node local `koutend` cluster and verifies put/get/query,
 JSON helpers, codec metadata, BIF opaque payloads, `wire_version`, and
 `batch_get`.
 
 ## Why A Native Wire Driver?
 
 The Python driver is intended for API services, scripts, experiments, and
-AI/RAG validation where a running RocheDB server or cluster is the natural
-boundary. It keeps Python out of RocheDB's placement internals and uses the same
+AI/RAG validation where a running KoutenDB server or cluster is the natural
+boundary. It keeps Python out of KoutenDB's placement internals and uses the same
 ring-oriented API that other external drivers should use.
