@@ -8,7 +8,7 @@ Applications pass a human-readable ring name, and KoutenDB returns a typed ID.
 
 ## Status
 
-- package: PyPI [`koutendb`](https://pypi.org/project/koutendb/) v0.2.0
+- package: PyPI [`koutendb`](https://pypi.org/project/koutendb/) v0.2.1
 - current mode: native TCP wire driver
 - Python: 3.10+
 - runtime dependencies: none
@@ -23,13 +23,15 @@ Implemented:
 - `query` / `query_encoded` / `query_text` / `query_json`
 - codec metadata negotiation with `CODECMETA ON`
 - `batch_get`
+- direct owner redirects from extended `FWD ... owner` responses
+- routed multi-node `batch_get` fallback with stable input ordering
 - typed `KoutenId`
 - one reconnect retry
 - context manager support
+- username/password, shared-secret transport, and TLS authentication
 
 Planned:
 
-- authentication / secret-key handshake support
 - retrieve / atlas wire APIs once the public wire contract is finalized for drivers
 - ring-read filters/projection once the public wire contract is finalized for drivers
 - connection pooling

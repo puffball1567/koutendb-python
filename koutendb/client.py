@@ -284,8 +284,35 @@ class KoutenClient:
         value = self.query_text(doc_id, selection, node=node)
         return None if value is None else json.loads(value)
 
-    def batch_get(self, ids: Iterable[KoutenId], node: int = 0) -> list[Optional[bytes]]:
+    def batch_get(
+        self, ids: Iterable[KoutenId], node: Optional[int] = None
+    ) -> list[Optional[bytes]]:
         id_list = list(ids)
+        if not id_list:
+            return []
+        if node is not None:
+            return self._batch_get_node(id_list, node)
+
+        result: list[Optional[bytes]] = [None] * len(id_list)
+        missing = list(range(len(id_list)))
+        for peer_node in range(len(self.peers)):
+            if not missing:
+                break
+            values = self._batch_get_node(
+                [id_list[index] for index in missing], peer_node
+            )
+            still_missing: list[int] = []
+            for index, value in zip(missing, values):
+                if value is None:
+                    still_missing.append(index)
+                else:
+                    result[index] = value
+            missing = still_missing
+        return result
+
+    def _batch_get_node(
+        self, id_list: list[KoutenId], node: int
+    ) -> list[Optional[bytes]]:
         body = "".join(
             f"{doc_id.parent} {doc_id.seq} {doc_id.period} {doc_id.head} {doc_id.t_write}\n"
             for doc_id in id_list
@@ -311,7 +338,12 @@ class KoutenClient:
         return out
 
     def _read_id_encoded(
-        self, op: str, doc_id: KoutenId, selection: bytes, node: int
+        self,
+        op: str,
+        doc_id: KoutenId,
+        selection: bytes,
+        node: int,
+        redirects_left: int = 2,
     ) -> Optional[EncodedPayload]:
         header = (
             f"{op} {doc_id.parent} {doc_id.epoch} {doc_id.seq} "
@@ -322,13 +354,15 @@ class KoutenClient:
         parts = self._rpc(node, header, selection)
         if not parts:
             raise KoutenError(f"{op} returned an empty response")
-        if parts[0] == "MISS":
+        if parts[0] in ("MISS", "GONE"):
             return None
         if parts[0] == "ERR":
             raise KoutenError(" ".join(parts[1:]))
         if parts[0] == "FWD":
-            if len(parts) != 7:
+            if len(parts) not in (7, 8):
                 raise KoutenError("invalid FWD response: " + " ".join(parts))
+            if redirects_left <= 0:
+                raise KoutenError("too many FWD redirects")
             fwd = KoutenId(
                 parent=int(parts[1]),
                 epoch=int(parts[2]),
@@ -337,7 +371,14 @@ class KoutenClient:
                 period=float(parts[5]),
                 head=float(parts[6]),
             )
-            return self._read_id_encoded(op, fwd, selection, node=node)
+            target_node = int(parts[7]) if len(parts) == 8 else node
+            return self._read_id_encoded(
+                op,
+                fwd,
+                selection,
+                node=target_node,
+                redirects_left=redirects_left - 1,
+            )
         if parts[0] != "VAL" or len(parts) not in (3, 4):
             raise KoutenError(f"{op} failed: " + " ".join(parts))
         codec = _codec(parts[3]) if len(parts) == 4 else ("json" if op == "QRYID" else "raw")
