@@ -1,0 +1,3 @@
+include docs/native-tcp.md
+include docs/native-tcp-validation.md
+include tests/tcp_adapter.py

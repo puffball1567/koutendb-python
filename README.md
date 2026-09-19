@@ -6,9 +6,12 @@ This driver talks to `koutend` over KoutenDB's high-level wire protocol. It does
 not reimplement KoutenDB's ring-key, period, head-angle, or placement rules.
 Applications pass a human-readable ring name, and KoutenDB returns a typed ID.
 
+Version 0.3.0 adds stricter framing, version negotiation, typed errors and safe
+retry behavior. See [the TCP safety and migration guide](docs/native-tcp.md).
+
 ## Status
 
-- package: PyPI [`koutendb`](https://pypi.org/project/koutendb/) v0.2.1
+- package: PyPI [`koutendb`](https://pypi.org/project/koutendb/) v0.3.0
 - current mode: native TCP wire driver
 - Python: 3.10+
 - runtime dependencies: none
@@ -24,9 +27,9 @@ Implemented:
 - codec metadata negotiation with `CODECMETA ON`
 - `batch_get`
 - direct owner redirects from extended `FWD ... owner` responses
-- routed multi-node `batch_get` fallback with stable input ordering
+- ordered `batch_get` using epoch-aware GETID requests
 - typed `KoutenId`
-- one reconnect retry
+- at most one reconnect retry for reads; no automatic write replay
 - context manager support
 - username/password, shared-secret transport, and TLS authentication
 

@@ -15,9 +15,10 @@ concurrency:
 jobs:
   test:
     timeout-minutes: 25
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-latest, macos-latest]
         python-version: ["3.10", "3.12"]
     steps:
       - name: Checkout Python driver
@@ -27,7 +28,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: puffball1567/koutendb
-          ref: v0.12.0
+          ref: e36b424bcfd9cd0dfa24ae121f4b4dd028b0eaac
           path: koutendb-core
 
       - name: Set up Python
@@ -36,21 +37,37 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install Nim
+        if: runner.os == 'Linux'
         uses: jiro4989/setup-nim-action@v2
         with:
           nim-version: "2.2.10"
 
-      - name: Install dependencies
+      - name: Install dependencies on Linux
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libsodium-dev
+
+      - name: Install dependencies on macOS
+        if: runner.os == 'macOS'
+        run: |
+          brew install nim libsodium openssl@3
+          sodium="$(brew --prefix libsodium)"
+          ssl="$(brew --prefix openssl@3)"
+          echo "$ssl/bin" >> "$GITHUB_PATH"
+          echo "LIBRARY_PATH=$sodium/lib" >> "$GITHUB_ENV"
+          echo "CPATH=$sodium/include" >> "$GITHUB_ENV"
+          echo "DYLD_LIBRARY_PATH=$sodium/lib:$ssl/lib" >> "$GITHUB_ENV"
 
       - name: Build koutend
         run: |
           cd koutendb-core
           nimble install -y
-          nim c -d:release --nimcache:/tmp/nimcache_koutend -o:src/koutend src/koutend.nim
+          nim c -d:release -d:ssl --nimcache:/tmp/nimcache_koutend -o:src/koutend src/koutend.nim
 
       - name: Install package
-        run: python -m pip install -e .
+        run: python -m pip install -e '.[secure]'
 
       - name: Run tests
         run: KOUTENDB_CORE_DIR="${{ github.workspace }}/koutendb-core" python -m unittest discover -s tests
+
+      - name: Shared native TCP conformance
+        run: python koutendb-core/scripts/native_driver_conformance.py --server koutendb-core/src/koutend -- python "$PWD/tests/tcp_adapter.py"
