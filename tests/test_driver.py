@@ -106,6 +106,11 @@ class KoutenPythonDriverTest(unittest.TestCase):
         self.assertEqual(KoutenId.parse(str(first)), first)
         self.assertEqual(self.client.batch_get([first, second]), [b"order-1", b"order-2"])
 
+    def test_batch_preserves_empty_payload_and_duplicates(self):
+        empty = self.client.put("docs/empty", b"")
+        self.assertEqual(self.client.batch_get([empty, empty]), [b"", b""])
+        self.assertEqual(self.client.batch_get([]), [])
+
 
 if __name__ == "__main__":
     unittest.main()
