@@ -1,7 +1,7 @@
-# Native TCP Safety Update (Development)
+# Native TCP Safety Update
 
 Python already uses native TCP and still needs no libkoutendb or FFI. This
-branch hardens that transport rather than adding another one.
+release hardens that transport rather than adding another one.
 
 ```python
 from koutendb import KoutenClient, IndeterminateWriteException

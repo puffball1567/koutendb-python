@@ -6,13 +6,12 @@ This driver talks to `koutend` over KoutenDB's high-level wire protocol. It does
 not reimplement KoutenDB's ring-key, period, head-angle, or placement rules.
 Applications pass a human-readable ring name, and KoutenDB returns a typed ID.
 
-This branch adds stricter framing, version negotiation, typed errors and safe
+Version 0.3.0 adds stricter framing, version negotiation, typed errors and safe
 retry behavior. See [the TCP safety and migration guide](docs/native-tcp.md).
-These changes are not yet included in the published version listed below.
 
 ## Status
 
-- package: PyPI [`koutendb`](https://pypi.org/project/koutendb/) v0.2.1
+- package: PyPI [`koutendb`](https://pypi.org/project/koutendb/) v0.3.0
 - current mode: native TCP wire driver
 - Python: 3.10+
 - runtime dependencies: none
